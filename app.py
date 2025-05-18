@@ -5,6 +5,7 @@ import pandas as pd
 from flask import Flask, request, render_template, send_file, flash, redirect, url_for
 from html import escape
 from Bio.Align import PairwiseAligner
+import re
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'
@@ -20,7 +21,7 @@ def load_gene_data(file_path):
         df = pd.read_csv(file_path)
         logger.debug(f"CSV columns: {df.columns.tolist()}")
         df['Protein Sequence'] = df['Protein Sequence'].apply(
-            lambda x: x.split('\n')[-1].strip().upper() if isinstance(x, str) and '>' in x else str(x).strip().upper()
+            lambda x: clean_sequence(x) if isinstance(x, str) else str(x).strip().upper()
         )
         for col in ['Name', 'Gene-ID', 'Description', 'Bacteria', 'Protein Sequence']:
             df[col] = df[col].fillna('')
@@ -33,38 +34,55 @@ def load_gene_data(file_path):
         logger.error(f"Error loading CSV: {str(e)}")
         raise
 
+def clean_sequence(seq):
+    """Remove FASTA headers, non-amino acid characters, and convert to uppercase."""
+    if not seq or not isinstance(seq, str):
+        return ""
+    # Remove FASTA header
+    seq = seq.split('\n')[-1].strip() if '>' in seq else seq.strip()
+    # Keep only valid amino acid characters (A-Z, excluding B, J, O, U, X, Z)
+    seq = re.sub(r'[^ACDEFGHIKLMNPQRSTVWY]', '', seq)
+    return seq.upper()
+
 def calculate_similarity(seq1, seq2):
     try:
+        seq1 = clean_sequence(seq1)
+        seq2 = clean_sequence(seq2)
         if not seq1 or not seq2 or len(seq1) == 0 or len(seq2) == 0:
-            logger.warning(f"Empty or invalid sequences: seq1={seq1[:20]}..., seq2={seq2[:20]}...")
+            logger.warning(f"Empty or invalid sequences after cleaning: seq1={seq1[:20]}..., seq2={seq2[:20]}...")
             return 0.0
-        # Clean sequences: remove FASTA headers, strip, uppercase
-        seq1 = seq1.split('\n')[-1].strip().upper() if '>' in seq1 else seq1.strip().upper()
-        seq2 = seq2.split('\n')[-1].strip().upper() if '>' in seq2 else seq2.strip().upper()
-        logger.debug(f"Comparing seq1={seq1[:20]}..., seq2={seq2[:20]}...")
+        logger.debug(f"Comparing seq1={seq1[:20]}... (len={len(seq1)}), seq2={seq2[:20]}... (len={len(seq2)})")
+        # Check for exact match first
+        if seq1 == seq2:
+            logger.debug(f"Exact match found: 100% similarity")
+            return 100.0
         aligner = PairwiseAligner()
-        aligner.mode = 'local'  # Revert to local alignment per attached app.py
-        aligner.match_score = 2  # Increase match score for stronger positive scores
+        aligner.mode = 'global'
+        aligner.match_score = 2
         aligner.mismatch_score = -1
-        aligner.open_gap_score = -1  # Reduce gap penalties
+        aligner.open_gap_score = -1
         aligner.extend_gap_score = -0.5
         score = aligner.score(seq1, seq2)
-        similarity = (score / max(len(seq1), len(seq2))) * 100
+        max_length = max(len(seq1), len(seq2))
+        similarity = (score / max_length) * 100
+        logger.debug(f"Score={score}, max_length={max_length}, similarity={similarity:.2f}%")
         if np.isnan(similarity):
             logger.warning(f"NaN similarity for seq1={seq1[:20]}..., seq2={seq2[:20]}...")
             return 0.0
-        # Clamp negative similarity to 0
-        similarity = max(0, similarity)
+        similarity = max(0, min(100, similarity))  # Clamp between 0 and 100
         if similarity >= 99:
-            logger.debug(f"High similarity: {similarity:.2f}%, seq1={seq1[:20]}..., seq2={seq2[:20]}...")
+            logger.debug(f"High similarity: {similarity:.2f}%")
         return similarity
     except Exception as e:
         logger.error(f"Error in similarity calculation: {str(e)}")
         return 0.0
 
 def analyze_sequence(protein_seq, gene_data, threshold=75):
-    cleaned_input = protein_seq.split('\n')[-1].strip().upper() if '>' in protein_seq else protein_seq.strip().upper()
-    logger.debug(f"Cleaned input sequence: {cleaned_input[:50]}...")
+    cleaned_input = clean_sequence(protein_seq)
+    logger.debug(f"Cleaned input sequence: {cleaned_input[:50]}... (len={len(cleaned_input)})")
+    if not cleaned_input:
+        logger.error("Input sequence is empty after cleaning")
+        return []
     results = []
     for _, row in gene_data.iterrows():
         gene_name = row['Name']
@@ -90,7 +108,7 @@ def analyze_sequence(protein_seq, gene_data, threshold=75):
     return results
 
 def is_duplicate_sequence(new_sequence, gene_data):
-    cleaned_new_seq = new_sequence.split('\n')[-1].strip().upper() if '>' in new_sequence else new_sequence.strip().upper()
+    cleaned_new_seq = clean_sequence(new_sequence)
     for seq in gene_data['Protein Sequence']:
         if cleaned_new_seq == seq:
             return True
