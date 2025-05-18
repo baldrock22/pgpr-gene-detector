@@ -31,6 +31,10 @@ def load_gene_data(file_path):
             empty_rows = df[df[col] == '']
             if not empty_rows.empty:
                 logger.warning(f"Rows with empty '{col}': {empty_rows.index.tolist()}")
+        # Check for duplicate sequences
+        duplicates = df[df['Protein Sequence'].duplicated(keep=False)]
+        if not duplicates.empty:
+            logger.warning(f"Duplicate sequences found at S. No.: {duplicates['S. No.'].tolist()}")
         return df
     except Exception as e:
         logger.error(f"Error loading CSV: {str(e)}")
@@ -69,8 +73,9 @@ def calculate_similarity(seq1, seq2):
             logger.warning(f"NaN similarity for seq1={seq1[:20]}..., seq2={seq2[:20]}...")
             return 0.0
         similarity = max(0, min(100, similarity))
-        if similarity >= 99:
-            logger.debug(f"High similarity: {similarity:.2f}%")
+        if similarity >= 99 and seq1 != seq2:
+            logger.debug(f"High similarity but not identical: {similarity:.2f}%")
+            similarity = min(similarity, 99.0)  # Cap non-identical sequences below 100%
         return similarity
     except Exception as e:
         logger.error(f"Error in similarity calculation: {str(e)}")
@@ -83,6 +88,7 @@ def analyze_sequence(protein_seq, gene_data, threshold=75):
         logger.error("Input sequence is empty after cleaning")
         return []
     results = []
+    seen_gene_ids = set()
     for idx, row in gene_data.iterrows():
         s_no = row['S. No.']
         gene_name = row['Name'] if row['Name'] and isinstance(row['Name'], str) and row['Name'].strip() else row['Gene-ID'] or f"Unknown_{s_no}"
@@ -93,6 +99,9 @@ def analyze_sequence(protein_seq, gene_data, threshold=75):
         if not sequence or not isinstance(sequence, str) or sequence.strip() == '':
             logger.warning(f"Skipping row with invalid sequence for S. No. {s_no}")
             continue
+        if gene_id in seen_gene_ids:
+            logger.debug(f"Skipping duplicate Gene-ID: {gene_id}")
+            continue
         similarity = calculate_similarity(cleaned_input, sequence)
         results.append({
             "Gene Name": gene_name,
@@ -101,8 +110,9 @@ def analyze_sequence(protein_seq, gene_data, threshold=75):
             "Similarity (%)": similarity,
             "Is PGPR": similarity >= threshold
         })
+        seen_gene_ids.add(gene_id)
     results = sorted(results, key=lambda x: x['Similarity (%)'], reverse=True)[:10]
-    logger.debug(f"Top 10 results: {[r['Gene Name'] for r in results]}")
+    logger.debug(f"Top 10 results: {[r['Gene Name'] for r in results]} with similarities: {[r['Similarity (%)'] for r in results]}")
     return results
 
 def is_duplicate_sequence(new_sequence, gene_data):
