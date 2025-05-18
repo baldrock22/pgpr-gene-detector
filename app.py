@@ -43,16 +43,18 @@ def calculate_similarity(seq1, seq2):
         seq2 = seq2.split('\n')[-1].strip().upper() if '>' in seq2 else seq2.strip().upper()
         logger.debug(f"Comparing seq1={seq1[:20]}..., seq2={seq2[:20]}...")
         aligner = PairwiseAligner()
-        aligner.mode = 'global'  # Use global alignment for exact matches
-        aligner.match_score = 1
+        aligner.mode = 'local'  # Revert to local alignment per attached app.py
+        aligner.match_score = 2  # Increase match score for stronger positive scores
         aligner.mismatch_score = -1
-        aligner.open_gap_score = -2
+        aligner.open_gap_score = -1  # Reduce gap penalties
         aligner.extend_gap_score = -0.5
         score = aligner.score(seq1, seq2)
         similarity = (score / max(len(seq1), len(seq2))) * 100
         if np.isnan(similarity):
             logger.warning(f"NaN similarity for seq1={seq1[:20]}..., seq2={seq2[:20]}...")
             return 0.0
+        # Clamp negative similarity to 0
+        similarity = max(0, similarity)
         if similarity >= 99:
             logger.debug(f"High similarity: {similarity:.2f}%, seq1={seq1[:20]}..., seq2={seq2[:20]}...")
         return similarity
@@ -61,7 +63,6 @@ def calculate_similarity(seq1, seq2):
         return 0.0
 
 def analyze_sequence(protein_seq, gene_data, threshold=75):
-    # Clean input sequence
     cleaned_input = protein_seq.split('\n')[-1].strip().upper() if '>' in protein_seq else protein_seq.strip().upper()
     logger.debug(f"Cleaned input sequence: {cleaned_input[:50]}...")
     results = []
