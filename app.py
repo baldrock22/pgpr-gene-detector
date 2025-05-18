@@ -14,6 +14,8 @@ logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 CSV_PATH = os.path.join(os.path.dirname(__file__), 'PGPRgene.csv')
+# For Render deployment
+# CSV_PATH = '/opt/render/project/src/PGPRgene.csv'
 
 def load_gene_data(file_path):
     logger.debug(f"Loading gene data from {file_path}")
@@ -25,7 +27,7 @@ def load_gene_data(file_path):
         )
         for col in ['Name', 'Gene-ID', 'Description', 'Bacteria', 'Protein Sequence']:
             df[col] = df[col].fillna('')
-        for col in ['Name', 'Protein Sequence']:
+        for col in ['Protein Sequence']:
             empty_rows = df[df[col] == '']
             if not empty_rows.empty:
                 logger.warning(f"Rows with empty '{col}': {empty_rows.index.tolist()}")
@@ -38,9 +40,7 @@ def clean_sequence(seq):
     """Remove FASTA headers, non-amino acid characters, and convert to uppercase."""
     if not seq or not isinstance(seq, str):
         return ""
-    # Remove FASTA header
     seq = seq.split('\n')[-1].strip() if '>' in seq else seq.strip()
-    # Keep only valid amino acid characters (A-Z, excluding B, J, O, U, X, Z)
     seq = re.sub(r'[^ACDEFGHIKLMNPQRSTVWY]', '', seq)
     return seq.upper()
 
@@ -52,7 +52,6 @@ def calculate_similarity(seq1, seq2):
             logger.warning(f"Empty or invalid sequences after cleaning: seq1={seq1[:20]}..., seq2={seq2[:20]}...")
             return 0.0
         logger.debug(f"Comparing seq1={seq1[:20]}... (len={len(seq1)}), seq2={seq2[:20]}... (len={len(seq2)})")
-        # Check for exact match first
         if seq1 == seq2:
             logger.debug(f"Exact match found: 100% similarity")
             return 100.0
@@ -60,16 +59,16 @@ def calculate_similarity(seq1, seq2):
         aligner.mode = 'global'
         aligner.match_score = 2
         aligner.mismatch_score = -1
-        aligner.open_gap_score = -1
-        aligner.extend_gap_score = -0.5
+        aligner.open_gap_score = -0.5
+        aligner.extend_gap_score = -0.1
         score = aligner.score(seq1, seq2)
-        max_length = max(len(seq1), len(seq2))
-        similarity = (score / max_length) * 100
-        logger.debug(f"Score={score}, max_length={max_length}, similarity={similarity:.2f}%")
+        norm_length = min(len(seq1), len(seq2))
+        similarity = (score / norm_length) * 100 if norm_length > 0 else 0.0
+        logger.debug(f"Score={score}, norm_length={norm_length}, similarity={similarity:.2f}%")
         if np.isnan(similarity):
             logger.warning(f"NaN similarity for seq1={seq1[:20]}..., seq2={seq2[:20]}...")
             return 0.0
-        similarity = max(0, min(100, similarity))  # Clamp between 0 and 100
+        similarity = max(0, min(100, similarity))
         if similarity >= 99:
             logger.debug(f"High similarity: {similarity:.2f}%")
         return similarity
@@ -84,16 +83,15 @@ def analyze_sequence(protein_seq, gene_data, threshold=75):
         logger.error("Input sequence is empty after cleaning")
         return []
     results = []
-    for _, row in gene_data.iterrows():
-        gene_name = row['Name']
+    for idx, row in gene_data.iterrows():
+        s_no = row['S. No.']
+        gene_name = row['Name'] if row['Name'] and isinstance(row['Name'], str) and row['Name'].strip() else row['Gene-ID'] or f"Unknown_{s_no}"
         sequence = row['Protein Sequence']
         gene_id = row['Gene-ID']
         bacteria = row['Bacteria']
-        if not gene_name or not isinstance(gene_name, str) or gene_name.strip() == '':
-            logger.warning(f"Skipping row with invalid gene name: {gene_name}")
-            continue
+        logger.debug(f"Processing S. No. {s_no}, Name={gene_name}, Gene-ID={gene_id}, Seq={sequence[:20]}... (len={len(sequence)})")
         if not sequence or not isinstance(sequence, str) or sequence.strip() == '':
-            logger.warning(f"Skipping row with invalid sequence for gene {gene_name}")
+            logger.warning(f"Skipping row with invalid sequence for S. No. {s_no}")
             continue
         similarity = calculate_similarity(cleaned_input, sequence)
         results.append({
@@ -130,7 +128,7 @@ def analyzer():
                 return render_template('analyzer.html', error="Please provide a protein sequence.")
             
             gene_data = load_gene_data(CSV_PATH)
-            if not all(col in gene_data.columns for col in ['Name', 'Gene-ID', 'Bacteria', 'Protein Sequence']):
+            if not all(col in gene_data.columns for col in ['S. No.', 'Name', 'Gene-ID', 'Bacteria', 'Protein Sequence']):
                 return render_template('analyzer.html', error="Invalid CSV format: Missing required columns")
             
             results = analyze_sequence(protein_seq, gene_data)
