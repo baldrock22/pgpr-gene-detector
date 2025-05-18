@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Contact - PGPR Gene Detector</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        .container { max-width: 800px; margin: auto; }
+        h1 { color: #333; }
+        p { font-size: 16px; color: #555; }
+        nav { margin-bottom: 20px; }
+        nav a { margin-right: 10px; color: #4CAF50; text-decoration: none; }
+        nav a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="{{ url_for('home') }}">Home</a>
+        <a href="{{ url_for('analyzer') }}">Analyzer</a>
+        <a href="{{ url_for('add_gene') }}">Add Gene</a>
+        <a href="{{ url_for('download') }}">Download CSV</a>
+        <a href="{{ url_for('about') }}">About</a>
+        <a href="{{ url_for('project') }}">Project</a>
+        <a href="{{ url_for('contact') }}">Contact</a>
+    </nav>
+    <div class="container">
+        <h1>Contact Us</h1>
+        <p>For inquiries, feedback, or support regarding the PGPR Gene Detector, please reach out to us.</p>
+        <p>Email: <a href="mailto:support@pgprgenedetector.com">support@pgprgenedetector.com</a></p>
+        <p>Phone: +91-123-456-7890</p>
+        <p>Address: Agricultural Bioinformatics Lab, University of Example, India</p>
+    </div>
+</body>
+</html>

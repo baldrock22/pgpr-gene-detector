@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Analyzer - PGPR Gene Detector</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        .error { color: red; }
+        table { border-collapse: collapse; width: 100%; max-width: 800px; margin: 20px 0; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background: #f2f2f2; }
+        canvas { max-width: 800px; }
+        nav { margin-bottom: 20px; }
+        nav a { margin-right: 10px; color: #4CAF50; text-decoration: none; }
+        nav a:hover { text-decoration: underline; }
+        .form-container { max-width: 800px; margin: auto; }
+        textarea { width: 100%; height: 100px; padding: 8px; border: 1px solid #ddd; }
+        button { padding: 10px 20px; background: #4CAF50; color: white; border: none; cursor: pointer; }
+        button:hover { background: #45a049; }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <nav>
+        <a href="{{ url_for('home') }}">Home</a>
+        <a href="{{ url_for('analyzer') }}">Analyzer</a>
+        <a href="{{ url_for('add_gene') }}">Add Gene</a>
+        <a href="{{ url_for('download') }}">Download CSV</a>
+        <a href="{{ url_for('about') }}">About</a>
+        <a href="{{ url_for('project') }}">Project</a>
+        <a href="{{ url_for('contact') }}">Contact</a>
+    </nav>
+    <div class="form-container">
+        <h1>PGPR Gene Analyzer</h1>
+        {% if error %}
+            <p class="error">{{ error }}</p>
+        {% endif %}
+        <form method="POST">
+            <label for="protein_seq">Enter Protein Sequence:</label><br>
+            <textarea id="protein_seq" name="protein_seq" rows="5" cols="50"></textarea><br>
+            <button type="submit">Analyze</button>
+        </form>
+        {% if results %}
+            <h2>Top 10 Matches</h2>
+            <table>
+                <tr>
+                    <th>Gene Name</th>
+                    <th>Gene-ID</th>
+                    <th>Bacteria</th>
+                    <th>Similarity (%)</th>
+                    <th>Is PGPR</th>
+                </tr>
+                {% for result in results %}
+                    <tr>
+                        <td>{{ result['Gene Name'] }}</td>
+                        <td>{{ result['Gene-ID'] }}</td>
+                        <td>{{ result['Bacteria'] }}</td>
+                        <td>{{ result['Similarity (%)']|round(2) }}</td>
+                        <td>{{ 'Yes' if result['Is PGPR'] else 'No' }}</td>
+                    </tr>
+                {% endfor %}
+            </table>
+            <canvas id="similarityChart"></canvas>
+            <script>
+                const ctx = document.getElementById('similarityChart').getContext('2d');
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: {{ chart_data.labels|tojson }},
+                        datasets: [{
+                            label: 'Similarity (%)',
+                            data: {{ chart_data.data|tojson }},
+                            backgroundColor: '#4CAF50',
+                            borderColor: '#45a049',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        scales: {
+                            y: { beginAtZero: true, max: 100 }
+                        }
+                    }
+                });
+            </script>
+        {% endif %}
+    </div>
+</body>
+</html>

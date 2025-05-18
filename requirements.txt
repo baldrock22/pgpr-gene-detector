@@ -1,0 +1,4 @@
+flask
+pandas
+biopython
+gunicorn>=20.1.0
