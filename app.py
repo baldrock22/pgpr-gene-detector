@@ -7,9 +7,8 @@ from html import escape
 from Bio.Align import PairwiseAligner
 
 app = Flask(__name__)
-app.secret_key = 'your_secret_key'  # For flash messages
+app.secret_key = 'your_secret_key'
 
-# Set up logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
@@ -20,14 +19,11 @@ def load_gene_data(file_path):
     try:
         df = pd.read_csv(file_path)
         logger.debug(f"CSV columns: {df.columns.tolist()}")
-        # Clean 'Protein Sequence' by removing FASTA headers
         df['Protein Sequence'] = df['Protein Sequence'].apply(
-            lambda x: x.split('\n')[-1].strip() if isinstance(x, str) and '>' in x else str(x).strip()
+            lambda x: x.split('\n')[-1].strip().upper() if isinstance(x, str) and '>' in x else str(x).strip().upper()
         )
-        # Replace NaN with empty strings
         for col in ['Name', 'Gene-ID', 'Description', 'Bacteria', 'Protein Sequence']:
             df[col] = df[col].fillna('')
-        # Log rows with empty required fields
         for col in ['Name', 'Protein Sequence']:
             empty_rows = df[df[col] == '']
             if not empty_rows.empty:
@@ -42,19 +38,32 @@ def calculate_similarity(seq1, seq2):
         if not seq1 or not seq2 or len(seq1) == 0 or len(seq2) == 0:
             logger.warning(f"Empty or invalid sequences: seq1={seq1[:20]}..., seq2={seq2[:20]}...")
             return 0.0
+        # Clean sequences: remove FASTA headers, strip, uppercase
+        seq1 = seq1.split('\n')[-1].strip().upper() if '>' in seq1 else seq1.strip().upper()
+        seq2 = seq2.split('\n')[-1].strip().upper() if '>' in seq2 else seq2.strip().upper()
+        logger.debug(f"Comparing seq1={seq1[:20]}..., seq2={seq2[:20]}...")
         aligner = PairwiseAligner()
-        aligner.mode = 'local'
+        aligner.mode = 'global'  # Use global alignment for exact matches
+        aligner.match_score = 1
+        aligner.mismatch_score = -1
+        aligner.open_gap_score = -2
+        aligner.extend_gap_score = -0.5
         score = aligner.score(seq1, seq2)
         similarity = (score / max(len(seq1), len(seq2))) * 100
         if np.isnan(similarity):
             logger.warning(f"NaN similarity for seq1={seq1[:20]}..., seq2={seq2[:20]}...")
             return 0.0
+        if similarity >= 99:
+            logger.debug(f"High similarity: {similarity:.2f}%, seq1={seq1[:20]}..., seq2={seq2[:20]}...")
         return similarity
     except Exception as e:
         logger.error(f"Error in similarity calculation: {str(e)}")
         return 0.0
 
 def analyze_sequence(protein_seq, gene_data, threshold=75):
+    # Clean input sequence
+    cleaned_input = protein_seq.split('\n')[-1].strip().upper() if '>' in protein_seq else protein_seq.strip().upper()
+    logger.debug(f"Cleaned input sequence: {cleaned_input[:50]}...")
     results = []
     for _, row in gene_data.iterrows():
         gene_name = row['Name']
@@ -67,7 +76,7 @@ def analyze_sequence(protein_seq, gene_data, threshold=75):
         if not sequence or not isinstance(sequence, str) or sequence.strip() == '':
             logger.warning(f"Skipping row with invalid sequence for gene {gene_name}")
             continue
-        similarity = calculate_similarity(protein_seq, sequence)
+        similarity = calculate_similarity(cleaned_input, sequence)
         results.append({
             "Gene Name": gene_name,
             "Gene-ID": gene_id,
@@ -75,13 +84,12 @@ def analyze_sequence(protein_seq, gene_data, threshold=75):
             "Similarity (%)": similarity,
             "Is PGPR": similarity >= threshold
         })
-    # Sort by similarity and take top 10
     results = sorted(results, key=lambda x: x['Similarity (%)'], reverse=True)[:10]
     logger.debug(f"Top 10 results: {[r['Gene Name'] for r in results]}")
     return results
 
 def is_duplicate_sequence(new_sequence, gene_data):
-    cleaned_new_seq = new_sequence.split('\n')[-1].strip() if '>' in new_sequence else new_sequence.strip()
+    cleaned_new_seq = new_sequence.split('\n')[-1].strip().upper() if '>' in new_sequence else new_sequence.strip().upper()
     for seq in gene_data['Protein Sequence']:
         if cleaned_new_seq == seq:
             return True
@@ -95,9 +103,10 @@ def home():
 @app.route('/analyzer', methods=['GET', 'POST'])
 def analyzer():
     try:
+        logger.debug("Accessing analyzer page")
         if request.method == 'POST':
             protein_seq = escape(request.form['protein_seq'].strip())
-            logger.debug(f"Received sequence: {protein_seq[:50]}...")
+            logger.debug(f"Raw input sequence: {protein_seq[:50]}...")
             if not protein_seq:
                 return render_template('analyzer.html', error="Please provide a protein sequence.")
             
@@ -186,4 +195,4 @@ def contact():
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port, debug=False)
+    app.run(host='0.0.0.0', port=port, debug=True)
