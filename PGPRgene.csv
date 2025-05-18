@@ -1,6 +1,6 @@
 S. No.,Name,Gene-ID,Description,Bacteria,Protein Sequence
 1,HcnA,57475633,cyanide-forming glycine dehydrogenase,Pseudomonas protegens CHA0,>VAV68921.1 hydrogen cyanide synthase HcnA [Pseudomonas protegensCHA0]
-,HcnA,,,,MRQIDRNFDIQPLQHADMTISLNGQPVTAALGETVLSVIQATGLRQVARNDHGQLVGAYCGMGVCHCCLVQIDGRHKRRACQTLVKPGMQVQTLSNRITETEPTL
+,,,,,MRQIDRNFDIQPLQHADMTISLNGQPVTAALGETVLSVIQATGLRQVARNDHGQLVGAYCGMGVCHCCLVQIDGRHKRRACQTLVKPGMQVQTLSNRITETEPTL
 2,HcnA,93403129,cyanide-forming glycine dehydrogenase,Pseudomonas chlororaphis subsp. chlororaphis,>AZD01771.1 Hydrogen cyanide synthase HcnA [Pseudomonas chlororaphis subsp. chlororaphis]
 ,,,,,MRHTERTFDIQPLQQADMTISLNGQPVTAAIGETVLSVIQSLGLRQVARNDHGQLAGAYCGMGVCHCCLVQIDGRHKRRACQTQVRPGMQVQTEVNRIIAAQEVL
 3,HcnA,61650098,cyanide-forming glycine dehydrogenase,Pseudomonas chlororaphis,>SDT34207.1 hydrogen cyanide synthase HcnA [Pseudomonas chlororaphis]
