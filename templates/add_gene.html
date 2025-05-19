@@ -1,66 +1,20 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Add Gene - PGPR Gene Detector</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 40px; }
-        .form-container { max-width: 800px; margin: auto; }
-        .form-group { margin-bottom: 15px; }
-        label { display: block; margin-bottom: 5px; font-weight: bold; }
-        input, textarea { width: 100%; padding: 8px; border: 1px solid #ddd; box-sizing: border-box; }
-        textarea { height: 100px; }
-        button { padding: 10px 20px; background: #4CAF50; color: white; border: none; cursor: pointer; }
-        button:hover { background: #45a049; }
-        .message { margin: 10px 0; padding: 10px; border-radius: 4px; }
-        .success { background: #d4edda; color: #155724; }
-        .error { background: #f8d7da; color: #721c24; }
-        nav { margin-bottom: 20px; }
-        nav a { margin-right: 10px; color: #4CAF50; text-decoration: none; }
-        nav a:hover { text-decoration: underline; }
-    </style>
+    <title>Add Gene</title>
 </head>
 <body>
-    <nav>
-        <a href="{{ url_for('home') }}">Home</a>
-        <a href="{{ url_for('analyzer') }}">Analyzer</a>
-        <a href="{{ url_for('add_gene') }}">Add Gene</a>
-        <a href="{{ url_for('download') }}">Download CSV</a>
-        <a href="{{ url_for('about') }}">About</a>
-        <a href="{{ url_for('project') }}">Project</a>
-        <a href="{{ url_for('contact') }}">Contact</a>
-    </nav>
-    <div class="form-container">
-        <h1>Add New Gene</h1>
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="message {{ category }}">{{ message }}</div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
-        <form method="POST">
-            <div class="form-group">
-                <label for="name">Gene Name *</label>
-                <input type="text" id="name" name="name" required>
-            </div>
-            <div class="form-group">
-                <label for="gene_id">Gene-ID *</label>
-                <input type="text" id="gene_id" name="gene_id" required>
-            </div>
-            <div class="form-group">
-                <label for="description">Description</label>
-                <textarea id="description" name="description"></textarea>
-            </div>
-            <div class="form-group">
-                <label for="bacteria">Bacteria *</label>
-                <input type="text" id="bacteria" name="bacteria" required>
-            </div>
-            <div class="form-group">
-                <label for="protein_seq">Protein Sequence (FASTA) *</label>
-                <textarea id="protein_seq" name="protein_seq" required></textarea>
-            </div>
-            <button type="submit">Add Gene</button>
-        </form>
-    </div>
+    <h1>Add a New Gene</h1>
+    {% if success %}
+        <p>{{ success }}</p>
+    {% endif %}
+    <form method="POST">
+        <label for="gene_name">Gene Name:</label>
+        <input type="text" id="gene_name" name="gene_name" required><br>
+        <label for="protein_seq">Protein Sequence:</label>
+        <textarea id="protein_seq" name="protein_seq" required></textarea><br>
+        <button type="submit">Add Gene</button>
+    </form>
+    <a href="{{ url_for('home') }}">Back to Home</a>
 </body>
 </html>
