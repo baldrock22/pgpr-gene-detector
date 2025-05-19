@@ -56,7 +56,7 @@ def compute_consensus_from_aligned(aligned_seqs):
         consensus.append(most_common)
     return ''.join(consensus)
 
-def analyze_sequence(protein_seq, gene_data, threshold=75):
+def analyze_sequence(protein_seq, gene_data, threshold=70):
     results = []
     pgpr_sequences = []
 
