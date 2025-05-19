@@ -1,5 +1,4 @@
 import os
-import logging
 from flask import Flask, request, render_template, jsonify
 from html import escape
 import pandas as pd
@@ -7,19 +6,8 @@ from Bio.Align import PairwiseAligner
 
 app = Flask(__name__)
 
-# Set up logging
-logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger(__name__)
-
 def load_gene_data(file_path):
-    logger.debug(f"Loading gene data from {file_path}")
-    df = pd.read_csv(file_path)
-    logger.debug(f"CSV columns: {df.columns.tolist()}")
-    # Clean 'Protein Sequence' by removing FASTA headers
-    df['Protein Sequence'] = df['Protein Sequence'].apply(
-        lambda x: x.split('\n')[-1].strip() if isinstance(x, str) and '>' in x else x.strip()
-    )
-    return df
+    return pd.read_csv(file_path)
 
 def calculate_similarity(seq1, seq2):
     aligner = PairwiseAligner()
@@ -31,52 +19,39 @@ def calculate_similarity(seq1, seq2):
 def analyze_sequence(protein_seq, gene_data, threshold=75):
     results = []
     for _, row in gene_data.iterrows():
-        gene_name = row['Name']  # Use 'Name' column from PGPRgene.csv
-        sequence = row['Protein Sequence'].strip()
-        if not sequence or not isinstance(sequence, str):
-            logger.warning(f"Invalid sequence for gene {gene_name}: {sequence}")
-            continue
-        similarity = calculate_similarity(protein_seq, sequence)
+        gene_name = row['Gene Name']
+        sequences = [row['Protein Sequence'].strip()]
+        similarities = [calculate_similarity(protein_seq, seq) for seq in sequences]
+        avg_similarity = sum(similarities) / len(similarities)
         results.append({
             "Gene Name": gene_name,
-            "Similarity (%)": similarity,
-            "Is PGPR": similarity >= threshold
+            "Similarity (%)": similarities[0],
+            "Is PGPR": avg_similarity >= threshold
         })
-    # Sort by similarity in descending order and take top 10
-    results = sorted(results, key=lambda x: x['Similarity (%)'], reverse=True)[:10]
     return results
 
 @app.route('/')
 def home():
-    logger.debug("Accessing home page")
     return render_template('index.html')
 
 @app.route('/analyzer', methods=['GET', 'POST'])
 def analyzer():
-    try:
-        if request.method == 'POST':
-            protein_seq = escape(request.form['protein_seq'].strip())
-            logger.debug(f"Received sequence: {protein_seq[:50]}...")
-            if not protein_seq:
-                return render_template('analyzer.html', error="Please provide a protein sequence.")
-            
-            gene_data = load_gene_data(os.path.join(os.path.dirname(__file__), 'PGPRgene.csv'))
-            if 'Name' not in gene_data.columns or 'Protein Sequence' not in gene_data.columns:
-                return render_template('analyzer.html', error="Invalid CSV format: Missing 'Name' or 'Protein Sequence' columns")
-            
-            results = analyze_sequence(protein_seq, gene_data)
-            
-            chart_data = {
-                'labels': [result['Gene Name'] for result in results],
-                'data': [result['Similarity (%)'] for result in results]
-            }
-            
-            return render_template('analyzer.html', results=results, chart_data=chart_data)
+    if request.method == 'POST':
+        protein_seq = escape(request.form['protein_seq'].strip())
+        if not protein_seq:
+            return render_template('analyzer.html', error="Please provide a protein sequence.")
         
-        return render_template('analyzer.html')
-    except Exception as e:
-        logger.error(f"Error in analyzer: {str(e)}", exc_info=True)
-        return render_template('analyzer.html', error=f"An error occurred: {str(e)}")
+        gene_data = load_gene_data(os.path.join(os.path.dirname(__file__), 'PGPRgene.csv'))
+        results = analyze_sequence(protein_seq, gene_data)
+        
+        chart_data = {
+            'labels': [result['Gene Name'] for result in results[:10]],
+            'data': [result['Similarity (%)'] for result in results[:10]]
+        }
+        
+        return render_template('analyzer.html', results=results, chart_data=chart_data)
+    
+    return render_template('analyzer.html')
 
 @app.route('/about')
 def about():
