@@ -28,7 +28,7 @@ def load_gene_data(file_path):
     )
     return df
 
-# Calculate similarity using PairwiseAligner (as in app.py)
+# Calculate similarity using PairwiseAligner
 def calculate_similarity(seq1, seq2):
     aligner = PairwiseAligner()
     aligner.mode = 'local'
@@ -45,6 +45,7 @@ def analyze_sequence(protein_seq, gene_data):
         gene_id = row['Gene-ID']
         sequence = row['Protein Sequence']
         s_no = row['S. No.']
+        bacteria = row['Bacteria']
 
         if not sequence or not isinstance(sequence, str):
             logger.warning(f"Invalid sequence for gene {gene_name} (Gene-ID={gene_id}): {sequence}")
@@ -65,7 +66,9 @@ def analyze_sequence(protein_seq, gene_data):
             "Gene Name": gene_name,
             "Similarity (%)": similarity,
             "Gene-ID": gene_id,
-            "S. No.": s_no
+            "S. No.": s_no,
+            "Bacteria": bacteria,
+            "Is PGPR": similarity >= 75
         })
 
     # Sort by similarity in descending order and take top 10
@@ -87,25 +90,21 @@ def analyzer():
                 return render_template('analyzer.html', error="Please provide a protein sequence.")
 
             logger.debug(f"Cleaned input sequence: {protein_seq} (len={len(protein_seq)})")
+            logger.debug(f"Current working directory: {os.getcwd()}")
+            logger.debug(f"Looking for PGPRgene.csv at: {os.path.join(os.getcwd(), 'PGPRgene.csv')}")
 
-            gene_data = load_gene_data(os.path.join(os.path.dirname(__file__), 'PGPRgene.csv'))
+            gene_data = load_gene_data(os.path.join(os.getcwd(), 'PGPRgene.csv'))
             if 'Name' not in gene_data.columns or 'Protein Sequence' not in gene_data.columns:
                 return render_template('analyzer.html', error="Invalid CSV format: Missing 'Name' or 'Protein Sequence' columns")
 
             results = analyze_sequence(protein_seq, gene_data)
-
-            # Prepare chart data for the frontend
-            chart_data = {
-                'labels': [result['Gene Name'] for result in results],
-                'data': [result['Similarity (%)'] for result in results]
-            }
 
             # Log top 10 results
             names = [result['Gene Name'] for result in results]
             similarities = [result['Similarity (%)'] for result in results]
             logger.debug(f"Top 10 results: {names} with similarities: {similarities}")
 
-            return render_template('analyzer.html', results=results, chart_data=chart_data)
+            return render_template('analyzer.html', results=results)
 
         return render_template('analyzer.html')
     except Exception as e:
