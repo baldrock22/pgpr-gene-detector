@@ -15,11 +15,9 @@ def load_gene_data(file_path):
     logger.debug(f"Loading gene data from {file_path}")
     df = pd.read_csv(file_path)
     logger.debug(f"CSV columns: {df.columns.tolist()}")
-    # Check for duplicates
     duplicates = df[df.duplicated(subset=['Protein Sequence'], keep=False)]
     if not duplicates.empty:
         logger.warning(f"Duplicate sequences found at S. No.: {duplicates['S. No.'].tolist()}")
-    # Clean 'Protein Sequence'
     df['Protein Sequence'] = df['Protein Sequence'].apply(
         lambda x: x.split('\n')[-1].strip() if isinstance(x, str) and '>' in x else x.strip()
     )
@@ -28,11 +26,15 @@ def load_gene_data(file_path):
 def calculate_similarity(seq1, seq2):
     aligner = PairwiseAligner()
     aligner.mode = 'local'
-    # Use default scoring to match app.py
     score = aligner.score(seq1, seq2)
     norm_length = max(len(seq1), len(seq2))
     similarity = (score / norm_length) * 100
     return score, norm_length, similarity
+
+@app.route('/')
+def home():
+    logger.debug("Accessing home page")
+    return render_template('index.html')
 
 @app.route('/analyzer', methods=['GET', 'POST'])
 def analyzer():
@@ -74,7 +76,6 @@ def analyzer():
                     "Is PGPR": similarity >= 75
                 })
             
-            # Sort by similarity and take top 10
             results = sorted(results, key=lambda x: x['Similarity (%)'], reverse=True)[:10]
             names = [result['Gene Name'] for result in results]
             similarities = [result['Similarity (%)'] for result in results]
@@ -91,6 +92,33 @@ def analyzer():
     except Exception as e:
         logger.error(f"Error in analyzer: {str(e)}", exc_info=True)
         return render_template('analyzer.html', error=f"An error occurred: {str(e)}")
+
+@app.route('/add_gene', methods=['GET', 'POST'])
+def add_gene():
+    if request.method == 'POST':
+        gene_name = request.form.get('gene_name')
+        protein_seq = request.form.get('protein_seq')
+        new_entry = pd.DataFrame({
+            'Name': [gene_name],
+            'Protein Sequence': [protein_seq],
+            'Gene-ID': ['TBD'],
+            'S. No.': [len(pd.read_csv(os.path.join(os.path.dirname(__file__), 'PGPRgene.csv'))) + 1]
+        })
+        new_entry.to_csv(os.path.join(os.path.dirname(__file__), 'PGPRgene.csv'), mode='a', header=False, index=False)
+        return render_template('add_gene.html', success="Gene added successfully!")
+    return render_template('add_gene.html')
+
+@app.route('/about')
+def about():
+    return render_template('about.html')
+
+@app.route('/project')
+def project():
+    return render_template('project.html')
+
+@app.route('/contact')
+def contact():
+    return render_template('contact.html')
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
