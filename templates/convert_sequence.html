@@ -1,0 +1,27 @@
+{% extends 'layout.html' %}
+{% block content %}
+  <h1 class="text-center mb-4">Convert DNA Sequence to Protein Sequence</h1>
+
+  {% if error %}
+    <div class="alert alert-danger">{{ error }}</div>
+  {% endif %}
+
+  {% if success %}
+    <div class="alert alert-success">{{ success }}</div>
+  {% endif %}
+
+  <form method="POST" action="/convert_sequence">
+    <div class="mb-3">
+      <label for="dna_sequence" class="form-label">DNA Sequence</label>
+      <textarea class="form-control" id="dna_sequence" name="dna_sequence" rows="5" placeholder="Enter DNA sequence (A, T, G, C only)" required>{{ dna_sequence if dna_sequence else '' }}</textarea>
+    </div>
+    <button type="submit" class="btn btn-primary">Convert to Protein</button>
+  </form>
+
+  {% if protein_sequence %}
+    <div class="mt-4">
+      <h3>Resulting Protein Sequence</h3>
+      <pre class="border p-3 bg-light">{{ protein_sequence }}</pre>
+    </div>
+  {% endif %}
+{% endblock %}
