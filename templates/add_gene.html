@@ -1,20 +1,54 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Add Gene</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 <body>
-    <h1>Add a New Gene</h1>
-    {% if success %}
-        <p>{{ success }}</p>
-    {% endif %}
-    <form method="POST">
-        <label for="gene_name">Gene Name:</label>
-        <input type="text" id="gene_name" name="gene_name" required><br>
-        <label for="protein_seq">Protein Sequence:</label>
-        <textarea id="protein_seq" name="protein_seq" required></textarea><br>
-        <button type="submit">Add Gene</button>
-    </form>
-    <a href="{{ url_for('home') }}">Back to Home</a>
+    <header>
+        <nav>
+            <ul>
+                <li><a href="{{ url_for('home') }}">Home</a></li>
+                <li><a href="{{ url_for('analyzer') }}">Analyzer</a></li>
+                <li><a href="{{ url_for('add_gene') }}">Add Gene</a></li>
+                <li><a href="{{ url_for('download_csv') }}">Download CSV</a></li>
+                <li><a href="{{ url_for('about') }}">About</a></li>
+                <li><a href="{{ url_for('project') }}">Project</a></li>
+                <li><a href="{{ url_for('contact') }}">Contact</a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        <h1>Add a New Gene</h1>
+        {% if error %}
+            <p style="color: red;">{{ error }}</p>
+        {% endif %}
+        {% if success %}
+            <p style="color: green;">{{ success }}</p>
+        {% endif %}
+        <form method="POST" action="{{ url_for('add_gene') }}">
+            <label for="s_no">S. No.:</label><br>
+            <input type="text" id="s_no" name="s_no" required><br><br>
+
+            <label for="name">Name:</label><br>
+            <input type="text" id="name" name="name" required><br><br>
+
+            <label for="gene_id">Gene-ID:</label><br>
+            <input type="text" id="gene_id" name="gene_id" required><br><br>
+
+            <label for="description">Description:</label><br>
+            <input type="text" id="description" name="description" required><br><br>
+
+            <label for="bacteria">Bacteria:</label><br>
+            <input type="text" id="bacteria" name="bacteria" required><br><br>
+
+            <label for="protein_seq">Protein Sequence:</label><br>
+            <textarea id="protein_seq" name="protein_seq" rows="5" required></textarea><br><br>
+
+            <button type="submit">Add Gene</button>
+        </form>
+    </main>
 </body>
 </html>
