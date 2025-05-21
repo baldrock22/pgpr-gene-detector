@@ -3,14 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PGPR Gene Detector</title>
+    <title>{% block title %}PGPR Gene Detector{% endblock %}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; }
+        .navbar { background-color: #333; }
+        .navbar-brand, .navbar a { color: white !important; margin-right: 15px; }
+        .navbar a:hover { color: #ddd !important; }
+        .btn-primary { background-color: #007bff; border: none; }
+        .btn-primary:hover { background-color: #0056b3; }
+    </style>
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <nav class="navbar navbar-expand-lg">
         <div class="container-fluid">
-            <a class="navbar-brand" href="/">PGPR Gene Detector</a>
+            <a class="navbar-brand" href="/"><b>PGPR Gene Detector</b></a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
@@ -23,12 +30,19 @@
                     <li class="nav-item"><a class="nav-link" href="/convert_sequence">Convert Sequence</a></li>
                     <li class="nav-item"><a class="nav-link" href="/about">About PGPR</a></li>
                     <li class="nav-item"><a class="nav-link" href="/contact">Contact</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/admin_approve">Admin</a></li>
                 </ul>
             </div>
         </div>
     </nav>
 
     <div class="container mt-4">
+        {% if error %}
+            <div class="alert alert-danger" role="alert">{{ error }}</div>
+        {% endif %}
+        {% if success %}
+            <div class="alert alert-success" role="alert">{{ success }}</div>
+        {% endif %}
         {% block content %}{% endblock %}
     </div>
 

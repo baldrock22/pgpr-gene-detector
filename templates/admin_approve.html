@@ -1,0 +1,58 @@
+{% extends 'layout.html' %}
+
+{% block title %}
+    Admin Approval - PGPR Gene Detector
+{% endblock %}
+
+{% block content %}
+    <h1>Admin Approval for Gene Submissions</h1>
+
+    {% if error %}
+        <p style="color: red;">{{ error }}</p>
+    {% endif %}
+
+    {% if success %}
+        <p style="color: green;">{{ success }}</p>
+    {% endif %}
+
+    <form method="POST">
+        {% if pending_genes %}
+            <label for="password">Admin Password:</label>
+            <input type="password" id="password" name="password" required>
+            <br><br>
+
+            <h2>Pending Gene Submissions</h2>
+            <table border="1">
+                <tr>
+                    <th>S. No.</th>
+                    <th>Gene Name</th>
+                    <th>Gene ID</th>
+                    <th>Bacteria</th>
+                    <th>Description</th>
+                    <th>Protein Sequence</th>
+                    <th>Action</th>
+                </tr>
+                {% for gene in pending_genes %}
+                    <tr>
+                        <td>{{ gene['S. No.'] }}</td>
+                        <td>{{ gene['Name'] }}</td>
+                        <td>{{ gene['Gene ID'] }}</td>
+                        <td>{{ gene['Bacteria'] }}</td>
+                        <td>{{ gene['Description'] }}</td>
+                        <td>{{ gene['Protein Sequence'][:50] }}...</td>
+                        <td>
+                            <input type="radio" name="sno" value="{{ gene['S. No.'] }}" required> Select
+                            <br>
+                            <button type="submit" name="action" value="approve">Approve</button>
+                            <button type="submit" name="action" value="reject">Reject</button>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </table>
+        {% else %}
+            <p>No pending gene submissions.</p>
+        {% endif %}
+    </form>
+
+    <a href="{{ url_for('home') }}">Back to Home</a>
+{% endblock %}

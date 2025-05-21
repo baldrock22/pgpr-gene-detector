@@ -1,36 +1,42 @@
 {% extends 'layout.html' %}
+
+{% block title %}
+    Add Gene - PGPR Gene Detector
+{% endblock %}
+
 {% block content %}
-  <h1 class="text-center mb-4">Add New Gene to PGPR Database</h1>
+    <h1 class="text-center mb-4">Add New Gene to PGPR Database</h1>
 
-  {% if error %}
-    <div class="alert alert-danger">{{ error }}</div>
-  {% endif %}
+    {% if error %}
+        <div class="alert alert-danger" role="alert">{{ error }}</div>
+    {% endif %}
+    {% if success %}
+        <div class="alert alert-success" role="alert">{{ success }}</div>
+    {% endif %}
 
-  {% if success %}
-    <div class="alert alert-success">{{ success }}</div>
-  {% endif %}
-
-  <form method="POST" action="/add_gene">
-    <div class="mb-3">
-      <label for="gene_name" class="form-label">Gene Name</label>
-      <input type="text" class="form-control" id="gene_name" name="gene_name" required>
-    </div>
-    <div class="mb-3">
-      <label for="gene_id" class="form-label">Gene ID</label>
-      <input type="text" class="form-control" id="gene_id" name="gene_id" required>
-    </div>
-    <div class="mb-3">
-      <label for="bacteria_name" class="form-label">Bacteria Name</label>
-      <input type="text" class="form-control" id="bacteria_name" name="bacteria_name" required>
-    </div>
-    <div class="mb-3">
-      <label for="description" class="form-label">Description</label>
-      <textarea class="form-control" id="description" name="description" rows="3" required></textarea>
-    </div>
-    <div class="mb-3">
-      <label for="protein_seq" class="form-label">Protein Sequence</label>
-      <textarea class="form-control" id="protein_seq" name="protein_seq" rows="5" placeholder="Enter sequence without spaces" required></textarea>
-    </div>
-    <button type="submit" class="btn btn-primary">Add Gene</button>
-  </form>
+    <form method="POST" class="container">
+        <div class="mb-3">
+            <label for="gene_name" class="form-label">Gene Name</label>
+            <input type="text" class="form-control" id="gene_name" name="gene_name" required>
+        </div>
+        <div class="mb-3">
+            <label for="gene_id" class="form-label">Gene ID</label>
+            <input type="text" class="form-control" id="gene_id" name="gene_id" required>
+        </div>
+        <div class="mb-3">
+            <label for="bacteria_name" class="form-label">Bacteria Name</label>
+            <input type="text" class="form-control" id="bacteria_name" name="bacteria_name" required>
+        </div>
+        <div class="mb-3">
+            <label for="description" class="form-label">Description</label>
+            <textarea class="form-control" id="description" name="description" rows="3" required></textarea>
+        </div>
+        <div class="mb-3">
+            <label for="protein_seq" class="form-label">Protein Sequence</label>
+            <textarea class="form-control" id="protein_seq" name="protein_seq" rows="3" required></textarea>
+        </div>
+        <div class="text-center">
+            <button type="submit" class="btn btn-primary">Submit Gene</button>
+        </div>
+    </form>
 {% endblock %}
