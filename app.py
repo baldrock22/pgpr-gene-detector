@@ -1,6 +1,6 @@
 import os
 import logging
-from flask import Flask, request, render_template, send_file
+from flask import Flask, request, render_template, send_file, redirect, url_for
 from html import escape
 import pandas as pd
 from Bio.Align import PairwiseAligner
@@ -14,10 +14,37 @@ app = Flask(__name__)
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
+# Admin password (for demo purposes; use proper authentication in production)
+ADMIN_PASSWORD = "secure_admin_password"  # Replace with a secure password or use environment variable
+
 def load_gene_data(file_path):
     df = pd.read_csv(file_path)
     df = df.dropna(subset=['Name', 'Protein Sequence'])
     return df
+
+def load_pending_gene_data(file_path):
+    try:
+        # Check if the file exists; if not, create it with the correct headers
+        if not os.path.exists(file_path):
+            with open(file_path, 'w', newline='') as csvfile:
+                writer = csv.writer(csvfile)
+                writer.writerow(['S. No.', 'Name', 'Gene ID', 'Description', 'Bacteria', 'Protein Sequence'])
+        
+        df = pd.read_csv(file_path)
+        # Ensure the required columns exist
+        required_columns = ['Name', 'Protein Sequence']
+        if not all(col in df.columns for col in required_columns):
+            # If columns are missing, return an empty DataFrame with the correct structure
+            return pd.DataFrame(columns=['S. No.', 'Name', 'Gene ID', 'Description', 'Bacteria', 'Protein Sequence'])
+        
+        df = df.dropna(subset=['Name', 'Protein Sequence'])
+        return df
+    except pd.errors.EmptyDataError:
+        # If the CSV is empty, return an empty DataFrame with the correct columns
+        return pd.DataFrame(columns=['S. No.', 'Name', 'Gene ID', 'Description', 'Bacteria', 'Protein Sequence'])
+    except Exception as e:
+        logger.error(f"Error loading pending gene data: {str(e)}")
+        return pd.DataFrame(columns=['S. No.', 'Name', 'Gene ID', 'Description', 'Bacteria', 'Protein Sequence'])
 
 def calculate_similarity(seq1, seq2):
     aligner = PairwiseAligner()
@@ -145,26 +172,91 @@ def add_gene():
             if not all([gene_name, gene_id, bacteria_name, description, protein_seq]):
                 return render_template('add_gene.html', error="All fields are required.")
 
-            # Path to CSV file
-            csv_path = os.path.join(os.path.dirname(__file__), 'PGPRgene.csv')
+            # Path to pending CSV file
+            pending_csv_path = os.path.join(os.path.dirname(__file__), 'pending_genes.csv')
 
-            # Read current CSV to determine next S. No.
-            gene_data = load_gene_data(csv_path)
-            next_sno = len(gene_data) + 1
+            # Read current pending CSV to determine next S. No.
+            pending_gene_data = load_pending_gene_data(pending_csv_path)
+            next_sno = len(pending_gene_data) + 1
 
-            # Append new gene to CSV
-            with open(csv_path, 'a', newline='') as csvfile:
+            # Append new gene to pending CSV
+            with open(pending_csv_path, 'a', newline='') as csvfile:
                 writer = csv.writer(csvfile)
                 writer.writerow([next_sno, gene_name, gene_id, description, bacteria_name, protein_seq])
 
-            logger.info(f"Added gene: {gene_name} (ID: {gene_id}) to PGPRgene.csv")
-            return render_template('add_gene.html', success="Gene added successfully!")
+            logger.info(f"Added gene: {gene_name} (ID: {gene_id}) to pending_genes.csv")
+            return render_template('add_gene.html', success="Gene submitted for admin approval!")
 
         return render_template('add_gene.html')
 
     except Exception as e:
         logger.error(f"Error in add_gene: {str(e)}", exc_info=True)
-        return render_template('add_gene.html', error=f"Failed to add gene: {str(e)}")
+        return render_template('add_gene.html', error=f"Failed to submit gene: {str(e)}")
+
+@app.route('/admin_approve', methods=['GET', 'POST'])
+def admin_approve():
+    try:
+        pending_csv_path = os.path.join(os.path.dirname(__file__), 'pending_genes.csv')
+        main_csv_path = os.path.join(os.path.dirname(__file__), 'PGPRgene.csv')
+
+        # Load pending genes
+        pending_data = load_pending_gene_data(pending_csv_path)
+        pending_genes = pending_data.to_dict('records')
+
+        if request.method == 'POST':
+            # Check if there are any pending genes
+            if not pending_genes:
+                return render_template('admin_approve.html', pending_genes=pending_genes, error="No pending gene submissions to approve.")
+
+            # Simple password check (replace with proper authentication in production)
+            password = request.form.get('password', '')
+            if password != ADMIN_PASSWORD:
+                return render_template('admin_approve.html', pending_genes=pending_genes, error="Invalid admin password.")
+
+            action = request.form.get('action')
+            gene_sno = request.form.get('sno')
+
+            if gene_sno not in pending_data['S. No.'].astype(str).values:
+                return render_template('admin_approve.html', pending_genes=pending_genes, error="Invalid gene submission ID.")
+
+            gene_row = pending_data[pending_data['S. No.'] == int(gene_sno)].iloc[0]
+
+            if action == 'approve':
+                # Append to main CSV
+                main_data = load_gene_data(main_csv_path)
+                next_sno = len(main_data) + 1
+                with open(main_csv_path, 'a', newline='') as csvfile:
+                    writer = csv.writer(csvfile)
+                    writer.writerow([next_sno, gene_row['Name'], gene_row['Gene ID'], gene_row['Description'], 
+                                    gene_row['Bacteria'], gene_row['Protein Sequence']])
+
+                # Remove from pending CSV
+                pending_data = pending_data[pending_data['S. No.'] != int(gene_sno)]
+                pending_data.to_csv(pending_csv_path, index=False)
+
+                logger.info(f"Approved gene: {gene_row['Name']} (ID: {gene_row['Gene ID']})")
+                # Reload pending genes after modification
+                pending_data = load_pending_gene_data(pending_csv_path)
+                pending_genes = pending_data.to_dict('records')
+                return render_template('admin_approve.html', pending_genes=pending_genes, success="Gene approved and added to main database!")
+
+            elif action == 'reject':
+                # Remove from pending CSV
+                pending_data = pending_data[pending_data['S. No.'] != int(gene_sno)]
+                pending_data.to_csv(pending_csv_path, index=False)
+
+                logger.info(f"Rejected gene: {gene_row['Name']} (ID: {gene_row['Gene ID']})")
+                # Reload pending genes after modification
+                pending_data = load_pending_gene_data(pending_csv_path)
+                pending_genes = pending_data.to_dict('records')
+                return render_template('admin_approve.html', pending_genes=pending_genes, success="Gene rejected and removed from pending list!")
+
+        # Display pending genes
+        return render_template('admin_approve.html', pending_genes=pending_genes)
+
+    except Exception as e:
+        logger.error(f"Error in admin_approve: {str(e)}", exc_info=True)
+        return render_template('admin_approve.html', pending_genes=[], error=f"An error occurred: {str(e)}")
 
 @app.route('/download_csv')
 def download_csv():
