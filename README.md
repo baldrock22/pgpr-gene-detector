@@ -113,7 +113,7 @@ The application is deployed using **Render**, with continuous integration enable
 
 ## Acknowledgements
 
-This project was developed as part of an academic bioinformatics initiative under the guidance ofProf. Ashutosh Mani. The work was carried out by Himanshu Singhal and Samarth Beck, who served as primary and main contributors with collaborative support from the project team.
+This project was developed as part of an academic bioinformatics initiative under the guidance of Prof. Ashutosh Mani. The work was carried out by Himanshu Singhal and Samarth Beck, who served as primary and main contributors with collaborative support from the project team.
 ---
 
 ## License
